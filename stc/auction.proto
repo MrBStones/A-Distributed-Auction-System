@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package auction;
+option go_package = "auction/proto";
+
+service AuctionService {
+  // Client-facing API
+  rpc PlaceBid (BidRequest) returns (BidResponse) {}
+  rpc GetResult (ResultRequest) returns (ResultResponse) {}
+  
+  // Internal node communication
+  rpc ReplicateBid (ReplicationRequest) returns (ReplicationResponse) {}
+  rpc Heartbeat (HeartbeatRequest) returns (HeartbeatResponse) {}
+}
+
+message BidRequest {
+  int32 amount = 1;
+  string bidder_id = 2;
+}
+
+message BidResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ResultRequest {}
+
+message ResultResponse {
+  int32 highest_bid = 1;
+  string winner = 2;
+  bool is_ended = 3;
+  string error = 4;
+}
+
+message ReplicationRequest {
+  int32 amount = 1;
+  string bidder_id = 2;
+  int64 timestamp = 3;
+}
+
+message ReplicationResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message HeartbeatRequest {
+  string addr = 1;
+  bool is_leader = 2;
+  int64 timestamp = 3;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+}
