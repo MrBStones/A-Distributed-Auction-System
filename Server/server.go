@@ -92,11 +92,15 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 			}, nil
 		}
 	} else {
-		var leader pb.AuctionServiceClient
-		for _, p := range s.peers {
-			leader = p
-			break
+		lowest := strings.Split(s.address, ":")[1]
+		for addr := range s.peers {
+			port := strings.Split(addr, ":")[1]
+			if port < lowest {
+				lowest = port
+			}
 		}
+
+		leader := s.peers[s.peerAddresses[s.peers["localhost:"+lowest]]]
 		_, err := leader.PlaceBid(ctx, req)
 		if err != nil {
 			return &pb.BidResponse{
