@@ -97,11 +97,7 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 			leader = p
 			break
 		}
-		_, err := leader.ReplicateBid(ctx, &pb.ReplicationRequest{
-			Amount:    newBid.Amount,
-			BidderId:  newBid.BidderID,
-			Timestamp: newBid.Timestamp.Unix(),
-		})
+		_, err := leader.PlaceBid(ctx, req)
 		if err != nil {
 			return &pb.BidResponse{
 				Success: false,
