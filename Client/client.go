@@ -59,5 +59,5 @@ func main() {
 		}
 	}
 
-	log.Fatal("No response from any of hte listed addresses")
+	log.Fatal("No response from any of the listed addresses")
 }

@@ -1,0 +1,129 @@
+LOG:
+USER 1:
+-------------------------------------
+❯ go run ./Client/client.go -servers "localhost:8002,localhost:8001,localhost:8003" -action bid -amount 10 -bidder user1
+2024/11/21 13:55:33 Response: Success = true, error =
+❯ go run ./Client/client.go -servers "localhost:8001" -action bid -amount 10 -bidder user1
+2024/11/21 13:56:16 Response: Success = false, error = bid too low
+❯ go run ./Client/client.go -servers "localhost:8001" -action result
+2024/11/21 13:56:25 Response: Highest_bid = 6080 from user2; Is_Ended = false; error = ;
+❯ go run ./Client/client.go -servers "localhost:8001" -action bid -amount 10000 -bidder user1
+2024/11/21 13:56:54 Response: Success = false, error = auction has ended
+❯ go run ./Client/client.go -servers "localhost:8001" -action bid -amount 10000 -bidder user1
+2024/11/21 13:57:33 No response from any of the listed addresses
+exit status 1
+❯ go run ./Client/client.go -servers "localhost:8001,localhost:8002,localhost:8003" -action result
+2024/11/21 13:58:08 Response: Highest_bid = 6080 from user2; Is_Ended = true; error = ;
+
+USER 2:
+-------------------------------------
+❯ go run ./Client/client.go -servers "localhost:8003" -action bid -amount 6080 -bidder user2
+2024/11/21 13:55:52 Response: Success = true, error =
+❯ go run ./Client/client.go -servers "localhost:8003" -action result
+2024/11/21 13:56:41 Response: Highest_bid = 6080 from user2; Is_Ended = false; error = ;
+❯ go run ./Client/client.go -servers "localhost:8001,localhost:8002,localhost:8003" -action bid -amount 50000 -bidder user2
+2024/11/21 13:57:23 Response: Success = false, error = auction has ended
+
+SERVER 8001:
+-------------------------------------
+❯ go run ./Server/server.go -addr localhost:8001 -peers localhost:8002,localhost:8003
+2024/11/21 13:55:02 Connected to peer localhost:8002
+2024/11/21 13:55:02 Connected to peer localhost:8003
+2024/11/21 13:55:02 Node localhost:8001 became the new leader
+2024/11/21 13:55:33 Recived bid 10 from user1
+2024/11/21 13:55:52 Recived bid 6080 from user2
+2024/11/21 13:56:16 Recived bid 10 from user1
+2024/11/21 13:56:16 Bid too low
+2024/11/21 13:56:25 Responded with 6080 user2 false
+2024/11/21 13:56:54 Recived bid 10000 from user1
+2024/11/21 13:56:54 Auction has ended
+^Csignal: interrupt
+
+SERVER 8002:
+-------------------------------------
+❯ go run ./Server/server.go -addr localhost:8002 -peers localhost:8001,localhost:8003
+2024/11/21 13:55:03 Connected to peer localhost:8001
+2024/11/21 13:55:03 Connected to peer localhost:8003
+2024/11/21 13:55:33 Recived bid 10 from user1
+2024/11/21 13:55:33 Recived Replicated bid 10 from user user1
+2024/11/21 13:55:33 Sent bid 10 to leader
+2024/11/21 13:55:52 Recived Replicated bid 6080 from user user2
+2024/11/21 13:57:16 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8001: connect: connection refused"
+2024/11/21 13:57:17 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8001: connect: connection refused"
+2024/11/21 13:57:17 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8003: connect: connection refused"
+2024/11/21 13:57:18 Node localhost:8001 appears to have failed
+2024/11/21 13:57:18 Node localhost:8002 became the new leader
+2024/11/21 13:57:18 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8003: connect: connection refused"
+2024/11/21 13:57:19 Node localhost:8003 appears to have failed
+2024/11/21 13:57:19 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8003: connect: connection refused"
+2024/11/21 13:57:23 Recived bid 50000 from user2
+2024/11/21 13:57:23 Auction has ended
+2024/11/21 13:58:08 Responded with 6080 user2 true
+^Csignal: interrupt
+
+SERVER 8003: (dies at same time that 8001 does)
+-------------------------------------
+❯ go run ./Server/server.go -addr localhost:8003 -peers localhost:8001,localhost:8002
+2024/11/21 13:55:03 Connected to peer localhost:8001
+2024/11/21 13:55:03 Connected to peer localhost:8002
+2024/11/21 13:55:33 Recived Replicated bid 10 from user user1
+2024/11/21 13:55:52 Recived bid 6080 from user2
+2024/11/21 13:55:52 Recived Replicated bid 6080 from user user2
+2024/11/21 13:55:52 Sent bid 6080 to leader
+2024/11/21 13:56:41 Responded with 6080 user2 false
+2024/11/21 13:57:16 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8001: connect: connection refused"
+^Csignal: interrupt
+
+COMBINED: (u is user s is server)
+-------------------------------------
+s1: 2024/11/21 13:55:02 Node localhost:8001 became the new leader
+u1: ❯ go run ./Client/client.go -servers "localhost:8002,localhost:8001,localhost:8003" -action bid -amount 10 -bidder user1
+s2: 2024/11/21 13:55:33 Recived bid 10 from user1
+s2: 2024/11/21 13:55:33 Sent bid 10 to leader
+s1: 2024/11/21 13:55:33 Recived bid 10 from user1 (from 8002)
+s2: 2024/11/21 13:55:33 Recived Replicated bid 10 from user user1
+s3: 2024/11/21 13:55:33 Recived Replicated bid 10 from user user1
+u1: 2024/11/21 13:55:33 Response: Success = true, error =
+u2: ❯ go run ./Client/client.go -servers "localhost:8003" -action bid -amount 6080 -bidder user2
+s3: 2024/11/21 13:55:52 Recived bid 6080 from user2
+s3: 2024/11/21 13:55:52 Sent bid 6080 to leader
+s1: 2024/11/21 13:55:52 Recived bid 6080 from user2 (from 8003)
+s2: 2024/11/21 13:55:52 Recived Replicated bid 6080 from user user2
+s3: 2024/11/21 13:55:52 Recived Replicated bid 6080 from user user2
+u2: 2024/11/21 13:55:52 Response: Success = true, error =
+u1: ❯ go run ./Client/client.go -servers "localhost:8001" -action bid -amount 10 -bidder user1
+s1: 2024/11/21 13:56:16 Recived bid 10 from user1
+s1: 2024/11/21 13:56:16 Bid too low
+u1: 2024/11/21 13:56:16 Response: Success = false, error = bid too low
+u1: ❯ go run ./Client/client.go -servers "localhost:8001" -action result
+s1: 2024/11/21 13:56:25 Responded with 6080 user2 false
+u1: 2024/11/21 13:56:25 Response: Highest_bid = 6080 from user2; Is_Ended = false; error = ;
+u2: ❯ go run ./Client/client.go -servers "localhost:8003" -action result
+s3: 2024/11/21 13:56:41 Responded with 6080 user2 false
+u2: 2024/11/21 13:56:41 Response: Highest_bid = 6080 from user2; Is_Ended = false; error = ;
+u1: ❯ go run ./Client/client.go -servers "localhost:8001" -action bid -amount 10000 -bidder user1
+s1: 2024/11/21 13:56:54 Recived bid 10000 from user1
+s1: 2024/11/21 13:56:54 Auction has ended
+u1: 2024/11/21 13:56:54 Response: Success = false, error = auction has ended
+s1: ^Csignal: interrupt
+s3: 2024/11/21 13:57:16 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8001: connect: connection refused"
+s3: ^Csignal: interrupt
+s2: 2024/11/21 13:57:16 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8001: connect: connection refused"
+s2: 2024/11/21 13:57:17 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8001: connect: connection refused"
+s2: 2024/11/21 13:57:17 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8003: connect: connection refused"
+s2: 2024/11/21 13:57:18 Node localhost:8001 appears to have failed
+s2: 2024/11/21 13:57:18 Node localhost:8002 became the new leader
+s2: 2024/11/21 13:57:18 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8003: connect: connection refused"
+s2: 2024/11/21 13:57:19 Node localhost:8003 appears to have failed
+s2: 2024/11/21 13:57:19 Failed to send heartbeat: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:8003: connect: connection refused"
+u2: ❯ go run ./Client/client.go -servers "localhost:8001,localhost:8002,localhost:8003" -action bid -amount 50000 -bidder user2
+s2: 2024/11/21 13:57:23 Recived bid 50000 from user2
+s2: 2024/11/21 13:57:23 Auction has ended
+u2: 2024/11/21 13:57:23 Response: Success = false, error = auction has ended
+u1: ❯ go run ./Client/client.go -servers "localhost:8001" -action bid -amount 10000 -bidder user1
+u1: 2024/11/21 13:57:33 No response from any of the listed addresses
+u1: exit status 1
+u1: ❯ go run ./Client/client.go -servers "localhost:8001,localhost:8002,localhost:8003" -action result
+s2: 2024/11/21 13:58:08 Responded with 6080 user2 true
+u1: 2024/11/21 13:58:08 Response: Highest_bid = 6080 from user2; Is_Ended = true; error = ;
+s2: ^Csignal: interrupt
