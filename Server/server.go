@@ -94,10 +94,8 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 	} else {
 		var leader pb.AuctionServiceClient
 		for _, p := range s.peers {
-			if s.peerAddresses[p] == s.address {
-				leader = p
-				break
-			}
+			leader = p
+			break
 		}
 		_, err := leader.ReplicateBid(ctx, &pb.ReplicationRequest{
 			Amount:    newBid.Amount,
