@@ -92,18 +92,18 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 			}, nil
 		}
 	} else {
-		var leader pb.AuctionServiceClient
-		for _, p := range s.peers {
-			if s.peerAddresses[p] == s.address {
-				leader = p
-				break
+		lowest := ""
+		for addr := range s.peers {
+			if lowest == "" {
+				lowest = addr
+			}
+			if addr < lowest {
+				lowest = addr
 			}
 		}
-		_, err := leader.ReplicateBid(ctx, &pb.ReplicationRequest{
-			Amount:    newBid.Amount,
-			BidderId:  newBid.BidderID,
-			Timestamp: newBid.Timestamp.Unix(),
-		})
+
+		leader := s.peers[s.peerAddresses[s.peers[lowest]]]
+		_, err := leader.PlaceBid(ctx, req)
 		if err != nil {
 			return &pb.BidResponse{
 				Success: false,
