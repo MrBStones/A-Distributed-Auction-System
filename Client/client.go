@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type AuctionClient struct {
@@ -48,15 +49,11 @@ func NewAuctionClient(serverAddrs []string) (*AuctionClient, error) {
 }
 
 func (c *AuctionClient) connectToServer(addr string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, addr,
-		grpc.WithInsecure(),
-		grpc.WithBlock())
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	c.mu.Lock()
 	c.clients[addr] = conn

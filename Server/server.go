@@ -251,7 +251,7 @@ func (s *AuctionServer) connectToPeers(peerAddresses []string) error {
 }
 
 func main() {
-	addr := flag.String("addr", "", "Node address (host:port)")
+	addr := flag.String("addr", "localhost:8001", "Node address (host:port)")
 	peers := flag.String("peers", "", "Comma-separated list of peer addresses")
 	flag.Parse()
 
