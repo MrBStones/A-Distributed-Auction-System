@@ -1,6 +1,6 @@
 # Distributed Auction System (gRPC)
 
-A distributed auction system implemented in Go using gRPC for communication. The system provides fault tolerance through replication and can withstand one node failure while maintaining consistency and availability.
+A distributed auction system implemented in Go using gRPC for communication. The system provides fault tolerance through replication and can withstand node failure while maintaining consistency and availability.
 
 ## Features
 
@@ -10,7 +10,6 @@ A distributed auction system implemented in Go using gRPC for communication. The
 - Automatic leader election
 - Heartbeat-based failure detection
 - Support for multiple bidders
-- Configurable auction duration
 
 ## Prerequisites
 
@@ -66,6 +65,8 @@ go build -o auction-client client.go
 ./auction-client -servers "localhost:8001,localhost:8002,localhost:8003" -action result
 ```
 
+(you can also try only giving the client only one server address and see that it maintains consistency)
+
 ## Testing Fault Tolerance
 
 You can test the system's fault tolerance by:
@@ -85,19 +86,13 @@ The system should:
 
 ### Components
 
-1. **Protocol Buffers (auction.proto)**
-   - Defines the service interface
-   - Specifies message formats
-   - Handles both client-facing and internal node communication
-
-2. **Server (server.go)**
-   - Implements the AuctionService interface
+1. **Server (server.go)**
    - Manages auction state
    - Handles replication
    - Implements failure detection
    - Manages leader election
 
-3. **Client (client.go)**
+2. **Client (client.go)**
    - Provides a command-line interface
    - Connects to any node in the cluster
    - Supports bidding and result queries
@@ -125,7 +120,7 @@ The system logs important events including:
 - Bid placement
 - State replication
 - Node failures
-- Auction completion
+- Result requests
 
 ## Configuration
 
@@ -151,28 +146,11 @@ The system handles various error conditions:
 
 - Supports only fail-stop failures (not Byzantine failures)
 - Requires at least two nodes for fault tolerance
-- No persistent storage (in-memory state only)
 - Simple leader election mechanism
 
 ## Future Improvements
 
 Possible enhancements:
-1. Add persistent storage
-2. Implement more sophisticated leader election
-3. Add support for multiple concurrent auctions
-4. Implement bid history queries
-5. Add authentication and authorization
-6. Add metrics and monitoring
-7. Implement recovery mechanisms for failed nodes
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details
+1. Implement more sophisticated leader election
+2. Add support for multiple concurrent auctions
+3. Implement bid history queries
