@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,7 @@ type AuctionServer struct {
 	address  string
 	isLeader bool
 	mu       sync.RWMutex
+	mu2      sync.Mutex
 
 	// Auction state
 	currentBid   Bid
@@ -62,8 +64,11 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	log.Printf("Recived bid %d from %s", req.Amount, req.BidderId)
+
 	if time.Since(s.auctionStart) > AuctionDuration {
 		s.auctionEnded = true
+		log.Println("Auction has ended")
 		return &pb.BidResponse{
 			Success: false,
 			Error:   "auction has ended",
@@ -71,6 +76,7 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 	}
 
 	if s.currentBid.Amount >= req.Amount {
+		log.Println("Bid too low")
 		return &pb.BidResponse{
 			Success: false,
 			Error:   "bid too low",
@@ -86,11 +92,18 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 	// If we're the leader, replicate to followers
 	if s.isLeader {
 		if err := s.replicateBidToFollowers(ctx, newBid); err != nil {
+			log.Println("failed to replicate bid", err)
 			return &pb.BidResponse{
 				Success: false,
 				Error:   "failed to replicate bid",
 			}, nil
 		}
+		s.currentBid = newBid
+		s.mu2.Lock()
+		s.bidHistory = append(s.bidHistory, newBid)
+		s.mu2.Unlock()
+		return &pb.BidResponse{Success: true}, nil
+
 	} else {
 		lowest := strings.Split(s.address, ":")[1]
 		for addr := range s.peers {
@@ -101,8 +114,9 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 		}
 
 		leader := s.peers[s.peerAddresses[s.peers["localhost:"+lowest]]]
-		_, err := leader.PlaceBid(ctx, req)
+		response, err := leader.PlaceBid(ctx, req)
 		if err != nil {
+			log.Println("failed to send bid to leader")
 			return &pb.BidResponse{
 				Success: false,
 				Error:   "failed to send bid to leader",
@@ -110,13 +124,9 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 		}
 
 		log.Printf("Sent bid %d to leader", newBid.Amount)
-		return &pb.BidResponse{Success: true}, nil
+		return response, nil
 	}
 
-	s.currentBid = newBid
-	s.bidHistory = append(s.bidHistory, newBid)
-
-	return &pb.BidResponse{Success: true}, nil
 }
 
 func (s *AuctionServer) GetResult(ctx context.Context, req *pb.ResultRequest) (*pb.ResultResponse, error) {
@@ -124,6 +134,8 @@ func (s *AuctionServer) GetResult(ctx context.Context, req *pb.ResultRequest) (*
 	defer s.mu.RUnlock()
 
 	isEnded := s.auctionEnded || time.Since(s.auctionStart) > AuctionDuration
+
+	log.Printf("Responded with %d %s %s", s.currentBid.Amount, s.currentBid.BidderID, strconv.FormatBool(isEnded))
 
 	return &pb.ResultResponse{
 		HighestBid: s.currentBid.Amount,
@@ -133,8 +145,8 @@ func (s *AuctionServer) GetResult(ctx context.Context, req *pb.ResultRequest) (*
 }
 
 func (s *AuctionServer) ReplicateBid(ctx context.Context, req *pb.ReplicationRequest) (*pb.ReplicationResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu2.Lock()
+	defer s.mu2.Unlock()
 
 	if !s.isLeader {
 		s.currentBid = Bid{
@@ -178,7 +190,6 @@ func (s *AuctionServer) replicateBidToFollowers(ctx context.Context, bid Bid) er
 			}
 		}(peer)
 	}
-
 	wg.Wait()
 	close(errors)
 
@@ -271,7 +282,7 @@ func (s *AuctionServer) connectToPeers(peerAddresses []string) error {
 }
 
 func main() {
-	addr := flag.String("addr", "localhost:8001", "Node address (host:port)")
+	addr := flag.String("addr", "", "Node address (host:port)")
 	peers := flag.String("peers", "", "Comma-separated list of peer addresses")
 	flag.Parse()
 
