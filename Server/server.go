@@ -91,11 +91,14 @@ func (s *AuctionServer) PlaceBid(ctx context.Context, req *pb.BidRequest) (*pb.B
 				Error:   "failed to replicate bid",
 			}, nil
 		}
-	}
-
-	// If we are not the leader, send the bid to the leader
-	if !s.isLeader {
-		leader := s.peers[s.peerAddresses[s.peers[0]]]
+	} else {
+		var leader pb.AuctionServiceClient
+		for _, p := range s.peers {
+			if s.peerAddresses[p] == s.address {
+				leader = p
+				break
+			}
+		}
 		_, err := leader.ReplicateBid(ctx, &pb.ReplicationRequest{
 			Amount:    newBid.Amount,
 			BidderId:  newBid.BidderID,
